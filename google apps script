@@ -1,0 +1,69 @@
+//程式碼開始
+var CHANNEL_ACCESS_TOKEN = "2ioAKXexkCxV/xlolaZqGpXGnuQLEK1mx+DrrXYHNCdtXN229vjWO5dfbbQxvjas81NaEh5dEiTHVCt9+aL9NyHOyiN/FNJDHQBOuwbWczzRC3bZvd3iwoPxOVGozl59SbmJwI4fwQq4rfiM9v+ArwdB04t89/1O/w1cDnyilFU=";    
+var spreadSheetId = "1pR8KQR4DN4KrE7Kt5PeS007TkP43tb6cMxt0urbNrL4";    //試算表 ID
+var sheetName = "iCoffee";    //工作表名稱
+var searchColumn = 1;    //搜尋第幾欄的資料
+//var allowUserId = ["Udd4d5571d723dad8416b1916a5ba3b54"];  //允許取得資料的使用者ID
+var spreadSheet = SpreadsheetApp.openById(spreadSheetId);
+var sheet = spreadSheet.getSheetByName(sheetName);
+var lastRow = sheet.getLastRow();
+var lastColumn = sheet.getLastColumn();
+var sheetData = sheet.getSheetValues(1, 1, lastRow, lastColumn);
+
+function doPost(e) {
+  if (typeof e !== 'undefined') {
+    var userData = JSON.parse(e.postData.contents);
+    
+    // Remove the block of code checking for allowed users
+    
+    var searchResult = [];
+    var replyMessage = [];
+    var replyContent;
+    var replyToken = userData.events[0].replyToken;
+    var searchContent = userData.events[0].message.text;
+
+    if (userData.events[0].type != "message") { return; }
+
+    if (userData.events[0].message.type != "text") { return; }
+
+    searchResult = sheetData.filter(function (item, index, array) {
+      return item[searchColumn - 1].toString() === searchContent;
+    });
+
+    for (var i = 0; i < searchResult.length; i++) {
+      replyContent = sheetData[0][0] + ":" + searchResult[i][0];
+
+      for (var j = 1; j < lastColumn; j++) {
+        replyContent += "\n\n" + sheetData[0][j] + ":" + searchResult[i][j];
+      }
+
+      replyMessage.push({ type: "text", text: replyContent });
+
+      if (replyMessage.length == 5) { break; }
+    }
+
+    if (replyMessage.length == 0) {
+      replyMessage.push({ type: "text", text: "很抱歉!查詢不到「" + searchContent + "」的資料" });
+    }
+
+    sendReplyMessage(CHANNEL_ACCESS_TOKEN, replyToken, replyMessage);
+  }
+}
+
+// 程式碼結束
+
+// 回送 Line Bot 訊息給使用者
+function sendReplyMessage(CHANNEL_ACCESS_TOKEN, replyToken, replyMessage) {
+  var url = "https://api.line.me/v2/bot/message/reply";
+  UrlFetchApp.fetch(url, {
+    "headers": {
+      "Content-Type": "application/json; charset=UTF-8",
+      "Authorization": "Bearer " + CHANNEL_ACCESS_TOKEN,
+    },
+    "method": "post",
+    "payload": JSON.stringify({
+      "replyToken": replyToken,
+      "messages": replyMessage,
+    }),
+  });
+}
