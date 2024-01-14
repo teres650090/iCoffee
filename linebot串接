@@ -1,0 +1,145 @@
+import json
+from linebot import LineBotApi, WebhookHandler
+# 載入對應的函式庫
+from linebot.models import TextSendMessage, StickerSendMessage, ImageSendMessage, LocationSendMessage, CarouselTemplate, CarouselColumn, PostbackAction, URIAction, MessageAction, TemplateSendMessage, ButtonsTemplate, ConfirmTemplate
+
+def reply_msg(text):
+    # 客製化回覆文字
+    msg_dict = {
+        'hi':'Hi! 你好呀～',
+        'hello':'Hello World!!!!',
+        '你好':'你好呦～',
+        'help':'有什麼要幫忙的嗎？'
+    }
+    # 如果出現特定地點，提供地點資訊
+    local_dict = {
+        '總統府':{
+            'title':'總統府',
+            'address':'100台北市中正區重慶南路一段122號',
+            'latitude':'25.040319874750914',
+            'longitude':'121.51162883484746'
+        }
+    }
+    # 如果出現特定圖片文字，提供圖片網址
+    img_dict = {
+        '皮卡丘':'https://upload.wikimedia.org/wikipedia/en/a/a6/Pok%C3%A9mon_Pikachu_art.png',
+        '傑尼龜':'https://upload.wikimedia.org/wikipedia/en/5/59/Pok%C3%A9mon_Squirtle_art.png'
+    }
+    # 預設回覆的文字就是收到的訊息
+    reply_msg_content = ['text',text]
+    if text in msg_dict:
+        reply_msg_content = ['text',msg_dict[text.lower()]]
+    if text in local_dict:
+        reply_msg_content = ['location',local_dict[text.lower()]]
+    if text in img_dict:
+        reply_msg_content = ['image',img_dict[text.lower()]]
+    if text == '推薦餐廳':
+        reply_msg_content = generate_district_buttons()
+    return reply_msg_content
+
+def linebot(request):
+    try:
+        body = request.get_data(as_text=True)
+        json_data = json.loads(body)                           # json 格式化收到的訊息
+        line_bot_api = LineBotApi('CxlINdtN9l65ecU0coDnXHNphFDDBA1RP/Nn9spi/q9VyPx3A984wVJU6WBE8Dyvi2gary72J+8nery6d9oh9Hmcd9iETNSWoJZHkWr2Y2rMLqXEHhUkDTcPVj7LM58oC2AnEEDqyKu9/gwl7j+PewdB04t89/1O/w1cDnyilFU=')  # 輸入 你的 Channel access token
+        handler = WebhookHandler('162a61eb62a2cc1212f03164db32b1f9')         # 輸入 你的 Channel secret
+        signature = request.headers['X-Line-Signature']
+        handler.handle(body, signature)
+        tk = json_data['events'][0]['replyToken']       # 取得 reply token
+        tp = json_data['events'][0]['message']['type']  # 取得 message 的類型
+        if tp == 'text':
+            # 如果是文字類型的訊息
+            msg = reply_msg(json_data['events'][0]['message']['text'])   # 取出文字並對應到 reply_msg 的函式
+            if msg[0] == 'text':
+                # 如果要回傳的訊息是 text，使用 TextSendMessage 方法
+                line_bot_api.reply_message(tk,TextSendMessage(text=msg[1]))
+            if msg[0] == 'location':
+                # 如果要回傳的訊息是 location，使用 LocationSendMessage 方法
+                line_bot_api.reply_message(tk,LocationSendMessage(title=msg[1]['title'],
+                                                                address=msg[1]['address'],
+                                                                latitude=msg[1]['latitude'],
+                                                                longitude=msg[1]['longitude']))
+            if msg[0] == 'image':
+                # 如果要回傳的訊息是 image，使用 ImageSendMessage 方法
+                line_bot_api.reply_message(tk,ImageSendMessage(original_content_url=msg[1],
+                                                                preview_image_url=msg[1]))
+        if tp == 'sticker':
+            # 如果收到的訊息是表情貼圖
+            stickerId = json_data['events'][0]['message']['stickerId'] # 取得 stickerId
+            packageId = json_data['events'][0]['message']['packageId'] # 取得 packageId
+            # 使用 StickerSendMessage 方法回傳同樣的表情貼圖
+            line_bot_api.reply_message(tk,StickerSendMessage(sticker_id=stickerId, package_id=packageId))
+    except:
+        print('error', body)
+    return 'OK'
+# 定義回覆訊息的函式
+
+def generate_district_buttons():
+    line_bot_api = LineBotApi('CxlINdtN9l65ecU0coDnXHNphFDDBA1RP/Nn9spi/q9VyPx3A984wVJU6WBE8Dyvi2gary72J+8nery6d9oh9Hmcd9iETNSWoJZHkWr2Y2rMLqXEHhUkDTcPVj7LM58oC2AnEEDqyKu9/gwl7j+PewdB04t89/1O/w1cDnyilFU=')
+    line_bot_api.push_message('U14a831587096b90057fad47196c213d9', TemplateSendMessage(
+        alt_text='CarouselTemplate',
+        template=CarouselTemplate(
+            columns=[
+                CarouselColumn(
+                    thumbnail_image_url='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ5YDnb6QvQ8yuJLdpMctjp5TbSO_Wto7gBZxtcqyuKghcT58sO',
+                    title='中正區',
+                    text='中正區咖啡廳',
+                    actions=[
+                        MessageAction(
+                            label='前往推薦',
+                            text='前往推薦'
+                            ),
+                        URIAction(
+                            label='看更多',
+                            uri='https://script.google.com/macros/s/AKfycbwfher_YVwF_nO8ijLq3l9vwCI3KtgMRVzIkFVt_K_ES5PHBVcdIUMlZ-U1c8pCQ0Ui/exec'
+                            )
+                        ]
+                    ),
+                CarouselColumn(
+                    thumbnail_image_url='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ5YDnb6QvQ8yuJLdpMctjp5TbSO_Wto7gBZxtcqyuKghcT58sO',
+                    title='中山區',
+                    text='中山區咖啡廳',
+                    actions=[
+                        MessageAction(
+                            label='前往推薦',
+                            text='前往推薦'
+                            ),
+                        URIAction(
+                            label='看更多',
+                            uri='https://script.google.com/macros/s/AKfycbwfher_YVwF_nO8ijLq3l9vwCI3KtgMRVzIkFVt_K_ES5PHBVcdIUMlZ-U1c8pCQ0Ui/exec'
+                            )
+                        ]
+                    ),
+                CarouselColumn(
+                    thumbnail_image_url='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ5YDnb6QvQ8yuJLdpMctjp5TbSO_Wto7gBZxtcqyuKghcT58sO',
+                    title='大同區',
+                    text='大同區咖啡廳',
+                    actions=[
+                        MessageAction(
+                            label='前往推薦',
+                            text='前往推薦'
+                            ),
+                        URIAction(
+                            label='看更多',
+                            uri='https://script.google.com/macros/s/AKfycbwfher_YVwF_nO8ijLq3l9vwCI3KtgMRVzIkFVt_K_ES5PHBVcdIUMlZ-U1c8pCQ0Ui/exec'
+                            )
+                        ]
+                    ),
+                CarouselColumn(
+                    thumbnail_image_url='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ5YDnb6QvQ8yuJLdpMctjp5TbSO_Wto7gBZxtcqyuKghcT58sO',
+                    title='士林區',
+                    text='士林區咖啡廳',
+                    actions=[
+                        MessageAction(
+                            label='前往推薦',
+                            text='前往推薦'
+                            ),
+                        URIAction(
+                            label='看更多',
+                            uri='https://script.google.com/macros/s/AKfycbwfher_YVwF_nO8ijLq3l9vwCI3KtgMRVzIkFVt_K_ES5PHBVcdIUMlZ-U1c8pCQ0Ui/exec'
+                            )
+                        ]
+                    )
+                ]
+            )
+        ))
